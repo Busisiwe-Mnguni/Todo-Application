@@ -8,6 +8,10 @@ export default function Home() {
   // State for toggling between active and archived views
   const [showArchived, setShowArchived] = useState(false);
 
+  // If not null, holds the id of the task currently being edited.
+  // When null, the form is in "create" mode.
+  const [editingId, setEditingId] = useState(null);
+
   // State for the form inputs
   const [form, setForm] = useState({
     title: '',
@@ -30,21 +34,31 @@ export default function Home() {
     fetchTasks(showArchived);
   }, [showArchived]);
 
-  // Handle form submission (Create task)
+  // Handle form submission (Create OR Edit, depending on editingId)
   const handleSubmit = async (e) => {
     e.preventDefault(); // Stop page refresh
 
-    await fetch('/api/tasks', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    });
+    if (editingId) {
+      // Editing an existing task
+      await fetch('/api/tasks', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingId, ...form }),
+      });
+    } else {
+      // Creating a new task
+      await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+    }
 
-    // Clear the form
+    // Clear the form and exit edit mode
     setForm({ title: '', description: '', due_date: '', topic: '', status: 'Todo' });
+    setEditingId(null);
 
-    // A new task is always active, so make sure we're looking at the active
-    // list and refresh it
+    // Make sure we're looking at the active list and refresh it
     setShowArchived(false);
     fetchTasks(false);
   };
@@ -52,6 +66,24 @@ export default function Home() {
   // Handle form input changes
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  // Populate the form with an existing task's data and switch to edit mode
+  const startEdit = (task) => {
+    setEditingId(task.id);
+    setForm({
+      title: task.title,
+      description: task.description || '',
+      due_date: task.due_date,
+      topic: task.topic,
+      status: task.status
+    });
+  };
+
+  // Leave edit mode without saving
+  const cancelEdit = () => {
+    setEditingId(null);
+    setForm({ title: '', description: '', due_date: '', topic: '', status: 'Todo' });
   };
 
   // Handle archiving a task
@@ -70,9 +102,9 @@ export default function Home() {
     <div style={{ padding: '20px', fontFamily: 'Arial' }}>
       <h1>My Todo App</h1>
 
-      {/* --- CREATE TASK FORM --- */}
+      {/* --- CREATE / EDIT TASK FORM --- */}
       <form onSubmit={handleSubmit} style={{ border: '1px solid #ccc', padding: '15px', marginBottom: '20px' }}>
-        <h3>Create New Task</h3>
+        <h3>{editingId ? 'Edit Task' : 'Create New Task'}</h3>
 
         <input name="title" placeholder="Title" value={form.title} onChange={handleChange} required />
         <br />
@@ -88,7 +120,12 @@ export default function Home() {
           <option value="Complete">Complete</option>
         </select>
         <br />
-        <button type="submit">Add Task</button>
+        <button type="submit">{editingId ? 'Save Changes' : 'Add Task'}</button>
+        {editingId && (
+          <button type="button" onClick={cancelEdit} style={{ marginLeft: '8px' }}>
+            Cancel
+          </button>
+        )}
       </form>
 
       {/* --- ACTIVE / ARCHIVED TOGGLE --- */}
@@ -100,7 +137,6 @@ export default function Home() {
           Archived Tasks
         </button>
       </div>
-
 
       <h2>{showArchived ? 'Archived Tasks' : 'Active Tasks'}</h2>
       <ul style={{ listStyle: 'none', padding: 0 }}>
@@ -121,10 +157,14 @@ export default function Home() {
               Topic: {task.topic} | Status: {task.status} | Due: {task.due_date}
               {isOverdue && <span style={{ color: 'red', fontWeight: 'bold' }}>  OVERDUE</span>}
               <br />
-              {/* Only show the Archive button on the active list — an already
-                  archived task doesn't need one */}
+              {/* Editing and archiving only make sense on the active list */}
               {!showArchived && (
-                <button onClick={() => archiveTask(task.id)}>Archive</button>
+                <>
+                  <button onClick={() => startEdit(task)}>Edit</button>
+                  <button onClick={() => archiveTask(task.id)} style={{ marginLeft: '8px' }}>
+                    Archive
+                  </button>
+                </>
               )}
             </li>
           );

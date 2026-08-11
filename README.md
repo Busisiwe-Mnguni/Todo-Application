@@ -98,5 +98,4 @@ npm start
 ## AI Usage
 
 Transcripts of AI-assisted planning, code generation and debugging for
-this project are included in [`/ai-transcripts`](./ai-transcripts) (or
-linked separately in the submission), per the lab requirements.
+this project are included in https://copilot.microsoft.com/shares/pages/MUpAQFt9T7krGYYSgJoPu and https://chat.deepseek.com/share/95ifd6v4twffq32ojo , per the lab requirements.

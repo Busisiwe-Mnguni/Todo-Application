@@ -8,6 +8,9 @@ export default function Home() {
   // State for toggling between active and archived views
   const [showArchived, setShowArchived] = useState(false);
 
+  // State for which field the list is currently sorted by
+  const [sortBy, setSortBy] = useState('due_date');
+
   // If not null, holds the id of the task currently being edited.
   // When null, the form is in "create" mode.
   const [editingId, setEditingId] = useState(null);
@@ -98,6 +101,27 @@ export default function Home() {
     fetchTasks(showArchived);
   };
 
+  // Status doesn't have a natural alphabetical order that matches workflow,
+  // so give it an explicit ranking (Todo -> In-Progress -> Complete) instead
+  // of sorting the strings directly.
+  const statusOrder = { 'Todo': 0, 'In-Progress': 1, 'Complete': 2 };
+
+  // Build a sorted copy of the tasks for display. We sort a copy (not the
+  // original state array) so we never mutate state directly with .sort().
+  const sortedTasks = [...tasks].sort((a, b) => {
+    switch (sortBy) {
+      case 'title':
+        return a.title.localeCompare(b.title);
+      case 'topic':
+        return a.topic.localeCompare(b.topic);
+      case 'status':
+        return statusOrder[a.status] - statusOrder[b.status];
+      case 'due_date':
+      default:
+        return new Date(a.due_date) - new Date(b.due_date);
+    }
+  });
+
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial' }}>
       <h1>My Todo App</h1>
@@ -138,9 +162,20 @@ export default function Home() {
         </button>
       </div>
 
+      {/* --- SORT CONTROL --- */}
+      <div style={{ marginBottom: '10px' }}>
+        <label htmlFor="sortBy">Sort by: </label>
+        <select id="sortBy" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+          <option value="due_date">Due Date</option>
+          <option value="topic">Topic</option>
+          <option value="status">Status</option>
+          <option value="title">Title</option>
+        </select>
+      </div>
+
       <h2>{showArchived ? 'Archived Tasks' : 'Active Tasks'}</h2>
       <ul style={{ listStyle: 'none', padding: 0 }}>
-        {tasks.map((task) => {
+        {sortedTasks.map((task) => {
           // Check if the task is overdue
           const today = new Date();
           const dueDate = new Date(task.due_date);
